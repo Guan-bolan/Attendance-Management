@@ -132,9 +132,21 @@ docs/              需求卡、计划、SDS、决策记录、工单、验收记�
 - `docs/issues/` — 工单（IS-001 ~ IS-020）
 - `docs/process/` — 过程文档归档：独立验收的判定书、审计台架的结论、红队审核意见、需求质询清单、事故复盘。见 [docs/process/README.md](docs/process/README.md)
 - `docs/DELIVERY.md` — 交付说明（给装机的人事 + 给以后重新打包的人）
+- `docs/发版流程.md` — 发新版本的操作流程（面向不写代码的人，双击 `发版.cmd` 即可）
 - `docs/WORKFLOW.md`、`docs/TASKBOOKS.md` — 流程手册与各阶段任务书
 
 过程文档用 `npm run archive:process` 从 `.tmp/` 归档（会顺带脱敏本机用户名）。
+
+## 发版
+
+已经发过 0.1.0。以后每改一版：
+
+```powershell
+npm run dist && npm run dist:portable   # 打包
+npm run release                          # 打 Release 并上传
+```
+
+不写代码的人直接用项目根目录的 **`发版.cmd`**（双击，交互式向导，含体检 / 改版本号 / 写发行说明 / 打包 / 提交 / 打 tag / 发 Release 全流程）。详见 [docs/发版流程.md](docs/发版流程.md)。
 
 ## 已知限制
 

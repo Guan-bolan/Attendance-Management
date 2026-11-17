@@ -60,6 +60,43 @@ function sha256(file) {
   return createHash('sha256').update(readFileSync(file)).digest('hex').toUpperCase()
 }
 
+/**
+ * 把校验和写进发行说明。
+ *
+ * 用标记块而不是硬编码：`<!-- CHECKSUMS:START -->` 到 `<!-- CHECKSUMS:END -->` 之间的内容
+ * 每次发版自动重写，上面的正文由人写、脚本不碰。没有标记块就追加到末尾。
+ */
+function injectChecksums(body) {
+  const rows = ASSETS.map((a) => {
+    const size = (statSync(a.local).size / 1024 / 1024).toFixed(1)
+    return `| \`${a.name}\` | ${size} MB | \`${sha256(a.local)}\` |`
+  })
+  const block = [
+    '<!-- CHECKSUMS:START -->',
+    '## 校验下载',
+    '',
+    '| 文件 | 大小 | SHA256 |',
+    '|---|---|---|',
+    ...rows,
+    '',
+    'PowerShell 里核对（应输出与上表一致的值）：',
+    '',
+    '```powershell',
+    `Get-FileHash .\\${ASSETS[0].name} -Algorithm SHA256`,
+    '```',
+    '<!-- CHECKSUMS:END -->'
+  ].join('\n')
+
+  const start = body.indexOf('<!-- CHECKSUMS:START -->')
+  const end = body.indexOf('<!-- CHECKSUMS:END -->')
+  if (start !== -1 && end !== -1) {
+    return body.slice(0, start) + block + body.slice(end + '<!-- CHECKSUMS:END -->'.length)
+  }
+  return body.trimEnd() + '\n\n---\n\n' + block + '\n'
+}
+
+const notesWithSums = injectChecksums(notes)
+
 console.log(`版本 ${VERSION}  tag ${TAG}`)
 for (const a of ASSETS) {
   const size = statSync(a.local).size
@@ -146,7 +183,7 @@ if (rel.code === '404') {
   rel = api('POST', `/repos/${REPO}/releases`, {
     tag_name: TAG,
     name: `鑫淼考勤 ${VERSION}`,
-    body: notes,
+    body: notesWithSums,
     draft: false,
     prerelease: false
   })
@@ -155,7 +192,7 @@ if (rel.code === '404') {
 } else if (rel.body?.id) {
   const upd = api('PATCH', `/repos/${REPO}/releases/${rel.body.id}`, {
     name: `鑫淼考勤 ${VERSION}`,
-    body: notes
+    body: notesWithSums
   })
   rel = upd
   console.log(`  已更新 ${rel.body?.html_url ?? rel.code}`)
