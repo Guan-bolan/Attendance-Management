@@ -1,0 +1,89 @@
+# electron-builder 打包配置（S9）
+#
+# 选 yml 而不是 package.json 的 build 字段：这份文件有注释、有层级（win / nsis / portable /
+# asarUnpack），塞进 package.json 后 JSON 不支持注释，读的人只能猜每条为什么这么写。
+#
+# 不做代码签名（docs/decisions.md D-007）。未签名 exe 首次运行会被 SmartScreen 拦，
+# 交付说明里写清「更多信息 → 仍要运行」，见 docs/DELIVERY.md。
+#
+# 镜像：本机 GitHub 直连不通（D-010）。
+#   - Electron 二进制：本文件 electronDownload.mirror + .npmrc 的 electron_mirror 双保险；
+#   - NSIS / winCodeSign 等打包依赖：只能走环境变量，跑打包前先设
+#       $env:ELECTRON_BUILDER_BINARIES_MIRROR='https://npmmirror.com/mirrors/electron-builder-binaries/'
+#     否则会去 GitHub 拉 winCodeSign / nsis，直连必然超时。
+
+appId: com.xinmiao.attendance
+productName: 鑫淼考勤
+copyright: Copyright © 2026 YG
+
+directories:
+  output: dist
+  buildResources: build
+
+# 只打运行期必需项。
+# - `out/**` 是 electron-vite 的构建产物（主进程 / preload / 渲染层）；
+# - `package.json` 提供 main 入口与 name/version；
+# - 生产依赖的 node_modules 由 electron-builder 自己按 dependencies 收集，不需要在这里写，
+#   但下面的 `!` 规则会作用到它上面（better-sqlite3 的 deps/ 源码与其它平台的预编译包不打包）。
+# docs/、src/、.tmp/、out 之外的任何东西都不进包。
+files:
+  - out/**
+  - package.json
+  - '!**/*.map'
+  - '!node_modules/better-sqlite3/deps/**'
+  - '!node_modules/better-sqlite3/src/**'
+  - '!node_modules/better-sqlite3/binding.gyp'
+  - '!node_modules/better-sqlite3/prebuilds/linux*.node'
+  - '!node_modules/better-sqlite3/prebuilds/darwin*.node'
+  # 渲染层依赖（antd / react / rc-*）已被 electron-vite 打进 out/renderer 的单文件 chunk，
+  # 运行期主进程只 require better-sqlite3 / chokidar / exceljs / exifr。
+  # 不排掉的话 app.asar 会多背 40+ MB 的 node_modules 死重量。
+  - '!node_modules/antd/**'
+  - '!node_modules/@ant-design/**'
+  - '!node_modules/@rc-component/**'
+  - '!node_modules/rc-*/**'
+  - '!node_modules/react/**'
+  - '!node_modules/react-dom/**'
+  - '!node_modules/scheduler/**'
+
+asar: true
+
+# better-sqlite3 的 `.node` 解包到 app.asar.unpacked。
+# D-010 实测 asar 内也能加载（Electron 会把它落到临时文件再 dlopen），但解包更稳：
+# 少一次临时落盘、少一个被部分杀软拦「从 asar 释放可执行文件」的机会，也便于人工核对 ABI。
+# 路径按 prebuildify 布局写（better-sqlite3 13.x 是 lib/binding.js 里 require ../prebuilds/<platform>-<arch>.node）。
+asarUnpack:
+  - node_modules/better-sqlite3/prebuilds/*.node
+
+# 不跑 @electron/rebuild：better-sqlite3 13.x 是 Node-API 预编译（gypfile:false，无 MSVC 也能用，
+# 见 D-010）。rebuild 会在没有 MSVC 的机器上尝试 node-gyp，纯属自找失败。
+npmRebuild: false
+
+electronDownload:
+  mirror: https://npmmirror.com/mirrors/electron/
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+
+nsis:
+  artifactName: 鑫淼考勤-安装版-${version}.${ext}
+  oneClick: false
+  perMachine: false
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: 鑫淼考勤
+  uninstallDisplayName: 鑫淼考勤
+  # 卸载时保留 %USERPROFILE%\Documents\Attendance：那是用户几年的考勤与照片，不许随卸载消失
+  deleteAppDataOnUninstall: false
+  runAfterFinish: true
+
+portable:
+  artifactName: 鑫淼考勤-绿色版-${version}.${ext}

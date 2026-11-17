@@ -1,0 +1,49 @@
+# 依赖与构建产物
+node_modules/
+dist/
+dist-electron/
+out/
+release/
+build/Release/
+*.log
+npm-debug.log*
+
+# 技术探针（S0 用完即删）
+.probe/
+
+# 本地数据与照片（绝不入库）
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+photos/
+thumbs/
+snapshots/
+backup/
+archives/
+
+# 临时与缓存
+.tmp/
+.cache/
+.vite/
+*.tsbuildinfo
+
+# 编辑器与系统
+.vscode/*
+!.vscode/extensions.json
+.idea/
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# 环境变量与本地覆盖（凭证绝不入库）
+.env
+.env.*
+!.env.example
+*.local
+
+# 备份包与导出物（含真实工资数据，绝不入库）
+鑫淼考勤-整库备份-*.zip
+Attendance-恢复前-*.zip
+*.xlsx
+!docs/**/*.xlsx

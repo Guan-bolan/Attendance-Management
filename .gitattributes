@@ -1,0 +1,19 @@
+# 统一换行：仓库里一律 LF，检出时按平台转换
+* text=auto eol=lf
+
+# Windows 批处理必须 CRLF，否则 cmd 解析会出问题
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# 二进制，不做行尾转换、不做 diff
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.zip binary
+*.exe binary
+*.node binary
+*.db binary
+
+# 语言统计：文档不算源码
+docs/** linguist-documentation

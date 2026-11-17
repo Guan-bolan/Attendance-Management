@@ -1,0 +1,26 @@
+-- 009_settlement_drafts.sql —— 清掉**从未发放过**的结算单草稿（RQ-005 C16；纯数据处置，结构一行不动）
+--
+-- 一、这条 DELETE 为什么必须写在 009 里（原计划并不在这里）
+--   原计划（SDS §13 D2）把这一步放在「拆锁」那一步（计划里的 T10）：S1–S4 之间旧结算单页还活着，
+--   还能 save 出 draft（repo/settlement.ts:381-428）、还能把 paid 解锁回 draft（:484-501，
+--   只改 status 与 unlocked_at），提前清账会被立刻写回脏数据。
+--   但迁移**只跑一次**（migrate.ts 只应用 version > 当前版本 的迁移，已应用的不重跑）：
+--   任何库一旦走到 version 9，此后永不再执行 009。这条 DELETE 一旦与 version 9 脱钩，
+--   那些已经在 9 上的库就**永远不会**被清理，而 RQ-005 C16 要求历史单按 `paid_at` 派生、
+--   草稿单必须被删。结论：本文件的 SQL 必须与 version 9 **同时落地**，不能留给后面的任务补。
+--
+-- 二、删除条件与保留条件（两个判据缺一不可，SDS §5.4 / 强制项 N-1）
+--   只删 status='draft' **且** paid_at IS NULL 的行 —— 即「状态是草稿 + 从未发放过」。
+--   **paid_at IS NOT NULL 的行一律保留**，包括 status='draft' 但 paid_at 非空的行：
+--   那是「曾标记已发放、后来被解锁回 draft」的单（repo/settlement.ts#unlock 只改 status 与
+--   unlocked_at，`paid_at` 原样保留）。它**真发过钱**，是这笔钱的唯一凭据，删掉就是抹账。
+--   所以判据只能写成 draft + paid_at IS NULL，写成 status='draft' 一个条件会误删凭据。
+--
+-- 三、后续任务只做验证，不要再改这个文件的语义
+--   后面的任务（含原计划的 T10）对本文件的动作只有一种：**验证** —— 在 v7 老库副本上跑真
+--   migrate()，确认 draft+paid_at IS NULL 被删、paid 保留、解锁过的（draft+paid_at 非空）保留。
+--   不许再改这里的判据、次序或落点；语义要变就是改版本契约，必须新开一条迁移，不许改这一条
+--   的既成事实（否则已升到 9 的库与新库行为分叉）。本文件允许增删的只有注释。
+--
+-- 本迁移只做这一件事：不加列、不建表、不动其它表。
+DELETE FROM settlements WHERE status='draft' AND paid_at IS NULL;
