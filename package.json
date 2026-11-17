@@ -11,7 +11,8 @@
     "dist": "electron-vite build && electron-builder --win nsis",
     "dist:portable": "electron-vite build && electron-builder --win portable",
     "test": "vitest run",
-    "seed:demo": "node scripts/seed-demo.mjs"
+    "seed:demo": "node scripts/seed-demo.mjs",
+    "archive:process": "node scripts/archive-process-docs.mjs"
   },
   "dependencies": {
     "@ant-design/icons": "5.6.1",

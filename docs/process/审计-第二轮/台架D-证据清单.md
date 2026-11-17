@@ -1,0 +1,133 @@
+# 审计台架 D · 证据清单
+
+- 今天（钉死）：2026-11-13T12:00:00+08:00（本地日期 2026-11-13）
+- 判据：119 通过 / 0 不符（共 119 条）
+
+- [x] **1A-1 结余（balanceCents）逐人逐分严格相等** — 期望：{"张伟":94500,"李强":20000,"王芳":5000}；实际：{"张伟":94500,"李强":20000,"王芳":5000}；备注：张伟{结转94500/应发0/预支0/已发0/结余94500} 李强{结转20000/应发0/预支0/已发0/结余20000} 王芳{结转5000/应发0/预支0/已发0/结余5000}
+- [x] **1A-1b 成分迁移恒等：结转增量 = 应发降幅 − 预支降幅 − 已发降幅（分毫不差）** — 期望：逐人恒等；实际：{"张伟":"应发-94500/预支-0/已发-0/结转+94500","李强":"应发-70000/预支-20000/已发-30000/结转+20000","王芳":"应发-20000/预支-0/已发-20000/结转+0"}
+- [x] **1A-2 清库真的删了数据（区间两列归零，反证「数字不变」不是因为什么都没做）** — 期望：张伟 periodDue 94500→0；实际：94500→0
+- [x] **1A-3 删除计数：考勤 6 / 预支 1 / 发放 2** — 期望：6/1/2；实际：6/1/2
+- [x] **1A-4 只给净额≠0 的两人生成结转（张伟 94500 / 李强 20000），王芳 0 行** — 期望：createdCarryovers=2，结转行 3（1 条往年 + 2 条本次）；实际：createdCarryovers=2，结转行 3
+- [x] **1A-5 净额=0 的王芳没有本次结转行** — 期望：0 行；实际：0 行
+- [x] **1A-6 archives.status 变 purged** — 期望：purged；实际：purged
+- [x] **1B-1 Δ 逐人等于未来段净额（同源 periodNetForRange(今天+1,区间末端)）** — 期望：{"张伟":31500,"李强":55000,"王芳":0}；实际：{"张伟":31500,"李强":55000,"王芳":0}；备注：合计 Δ=86500 分
+- [x] **1B-2 Δ 合计 = 未来段净额合计（31500+55000+0）** — 期望：86500 分 = 865.00 元；实际：86500 分
+- [x] **1B-3 结转金额 = periodNetForRange(from,to,asOf=区间末端)，且 clearance.asOf=区间末端** — 期望：createdCarryovers=2、asOf=2026-12-03；实际：createdCarryovers=2、asOf=2026-12-03
+- [x] **1B-4 F2 反例：旧行为（asOf=今天）少结转的钱 = 未来段净额（逐人）** — 期望：{"张伟":31500,"李强":55000,"王芳":0}；实际：{"张伟":31500,"李强":55000,"王芳":0}；备注：旧行为合计少结转 86500 分
+- [x] **1B-5 旧行为确实会丢钱：newStyle 合计 − oldStyle 合计 = 86500** — 期望：86500；实际：86500
+- [x] **1B-6 硬判据：清库不改变「截至区间末端」的结余（asOf=区间末端 逐人逐分相等）** — 期望：{"张伟":63000,"李强":55000,"王芳":0}；实际：{"张伟":63000,"李强":55000,"王芳":0}
+- [x] **1B-7 整段区间都在未来：asOf 顶到区间末端、结余在区间末端不变、今天口径 Δ=整段净额 20000（王芳日薪 20000）** — 期望：asOf=2026-11-28、结转 1 条、末端结余不变、Δ=20000；实际：asOf=2026-11-28、结转 1 条、Δ=20000
+- [x] **1C-0 「本年」区间确实含未来段，且剩余天数够放下未来那天** — 期望：to>2026-11-13 且剩余≥40 天；实际：2026-01-01 ~ 2026-12-31，今天第 317 天，剩 48 天
+- [x] **1C-0b 九个日期全部落在 [本年 1-1, 12-31] 内** — 期望：2026-01-01~2026-12-31；实际：2026-03-18,2026-06-16,2026-12-03,2026-02-06,2026-12-11,2026-12-12,2026-12-05,2026-01-17,2026-01-18
+- [x] **1C-1 公历整年清库 Δ 逐人 = 未来段净额（同源 periodNetForRange(今天+1,12-31)）** — 期望：{"张伟":31500,"李强":65000,"王芳":0}；实际：{"张伟":31500,"李强":65000,"王芳":0}
+- [x] **1C-2 公历整年清库 Δ 合计** — 期望：96500 分 = 965.00 元；实际：96500 分；备注：清库前结余合计 78000 → 清库后 174500
+- [x] **1C-3 结转 = periodNetForRange(1-1,12-31,asOf=12-31) 合计** — 期望：asOf=2026-12-31、结转 2 条；实际：asOf=2026-12-31、结转 2 条、总额 174500
+- [x] **1C-4 硬判据：「本年」整年清库后，截至 12-31 的结余逐人逐分不变** — 期望：{"张伟":74500,"李强":100000,"王芳":0}；实际：{"张伟":74500,"李强":100000,"王芳":0}；备注：今天口径的结余则从 78000 变成 174500（Δ=+96500 分，即未来段净额）
+- [x] **1D-① 区间应发与工资表相差恰 1 分（小数分：加班 62.5 分 × 2 条）** — 期望：|差| = 1 分；实际：期间应发 31562 vs 工资表 31563（差 -1）
+- [x] **1D-② 判别器：两个数**不相等** → 实现确实是「全史 − 区间外」而不是「区间内直接累加」** — 期望：不相等；实际：31562 ≠ 31563
+- [x] **1D-③ 清库结转金额 = 期间应发（工资表口径差 1 分，方向与 C15b 声明一致）** — 期望：31562；实际：31562（工资表 31563）
+- [x] **2A-① 发放缺副本 → 拒绝，且 detail 带「缺几笔 + 缺哪些 id」** — 期望：E_VALIDATION / kind=purge-missing-payments / missingPaymentCount=1 / 含该 id；实际：E_VALIDATION / purge-missing-payments / 1 / [1]
+- [x] **2A-①b 被拒后主库一条不少、档案仍是 created** — 期望：payments=1、entries=1、status=created；实际：payments=1、entries=1、status=created
+- [x] **2A-② 考勤缺副本 → 拒绝（有指纹的档案在③就被拦，报的是 entryIdsHash）** — 期望：E_VALIDATION / 记录集合已变化；实际：E_VALIDATION / item=entryIdsHash / 档案 #2（2026-09-14 ～ 2026-09-24）与主库当前状态对不上：记录集合已；备注：新记录 id=3
+- [x] **2A-③ 预支缺副本 → 被闸门② 拦住（kind=purge-not-covered + extraAdvanceIds）** — 期望：E_VALIDATION / kind=purge-not-covered / extraAdvanceIds 含该 id；实际：E_VALIDATION / purge-not-covered / [1]
+- [x] **2A-④a 无指纹的老包：fingerprintChecked=false（如实说没比，不假装通过）** — 期望：false；实际：false
+- [x] **2A-④b0 先插后删拿到了不同的 id（否则「换了一行」这件事根本没造出来）** — 期望：新 id ≠ 5；实际：6
+- [x] **2A-④b 条数相同、换了 id → 闸门② 的考勤分支接住（kind=purge-not-covered + extraEntryIds）** — 期望：E_VALIDATION / kind=purge-not-covered / extraEntryIds 含新 id；实际：E_VALIDATION / purge-not-covered / [6]
+- [x] **2B-① 改备注 → 拒绝，detail.kind=purge-drift / driftedEntries=1** — 期望：E_VALIDATION / purge-drift / driftedEntries=1 / 1 条考勤被改过；实际：E_VALIDATION / purge-drift / 1 / 档案 #1（2026-10-14 ～ 2026-11-03）里的数据在归档之后被
+- [x] **2B-①b 时间戳确实比 manifest.createdAt 新（闸门③ 的第一项判据真的在比）** — 期望：updated_at > 2026-11-13T04:00:00.000Z；实际：2026-11-13T05:00:00.000Z
+- [x] **2B-①c 被拒后考勤一条不少、档案仍 created** — 期望：entries=1、created；实际：entries=1、created
+- [x] **2B-②a 时间戳判据是瞎的（slot 变了、entries.updated_at 没变）** — 期望：updated_at 仍是归档前那一刻、slot=OUT；实际：updated_at=2026-11-13T05:00:00.000Z（createdAt=2026-11-13T05:00:00.000Z）、slot=OUT
+- [x] **2B-②b countSlotDrift 独自抓到 1 处漂移** — 期望：{checked:true, drift:1}；实际：{"checked":true,"drift":1}
+- [x] **2B-②c 只改照片位 → 拒绝，slotDrift=1 / slotChecked=true** — 期望：purge-drift / slotDrift=1 / slotChecked=true / 1 处照片位被改过；实际：purge-drift / 1 / true / 档案 #2（2026-09-14 ～ 2026-10-04）里的数据在归档之后被
+- [x] **2B-③a 老档案 entry_photos 确实没有 slot 列** — 期望：无 slot 列；实际：["entry_id","photo_id"]
+- [x] **2B-③b dryRun 如实回 slotChecked=false（不许假装通过）** — 期望：slotChecked=false、purged=false；实际：slotChecked=false、purged=false
+- [x] **2B-③c 照片位真的漂了，但老包比不了（drift=0、checked=false）——这是如实跳过的代价** — 期望：{checked:false,drift:0} 且清库放行、回包 slotChecked=false；实际：{"checked":false,"drift":0}、purged=true、slotChecked=false
+- [x] **2C-① 净额≠0 且没勾确认 → 拒绝，detail.kind=purge-needs-confirm** — 期望：E_VALIDATION / purge-needs-confirm；实际：E_VALIDATION / purge-needs-confirm
+- [x] **2C-② 拒绝时回传**全量清单**：3 人、每人四数 + carryoverCents=netCents** — 期望：3 行、四数齐全、carryoverCents=netCents、unbalancedCount=3；实际：3 行、unbalancedCount=3、张伟:31500/0/0/31500 李强:35000/10000/0/25000 王芳:0/0/20000/-20000
+- [x] **2C-③ 净额合计 = 应发 − 预支 − 已发（31500 + (35000−10000) + (−20000) = 36500）** — 期望：36500；实际：36500
+- [x] **2C-④ 被拒时清单**没有**写进 manifest（这一步还轮不到写凭据）** — 期望：无 clearance 键；实际：无
+- [x] **2C-⑤ 被拒后主库一行没删** — 期望：entries=2 / advances=1 / payments=1；实际：2/1/1
+- [x] **2C-⑥ 勾了 → 放行，且 manifest.clearance 落地：confirmed=true / purgeState=done / 行数一致** — 期望：purged / confirmed=true / done / 3 行；实际：purged=true / confirmed=true / done / 3 行
+- [x] **2C-⑦ 凭据里的 asOf 就是这次算账用的截止日（区间末端 ≤ 今天时 = 今天）** — 期望：2026-11-13；实际：2026-11-13
+- [x] **2C-⑧ 净额全 0 → needsConfirm=false，不勾也放行** — 期望：needsConfirm=false、purged=true；实际：needsConfirm=false、purged=true
+- [x] **2C-⑨ 「无论勾否都写」：没勾也写 clearance，confirmed=false** — 期望：confirmed=false / done / netCents=0；实际：confirmed=false / done / 0
+- [x] **2D-① 主库 10 张表的行数前后逐项相等** — 期望：{"entries":2,"entry_photos":1,"advances":1,"advance_photos":1,"payments":2,"payment_photos":1,"photos":3,"carryovers":1,"archives":1,"snapshots":0}；实际：{"entries":2,"entry_photos":1,"advances":1,"advance_photos":1,"payments":2,"payment_photos":1,"photos":3,"carryovers":1,"archives":1,"snapshots":0}
+- [x] **2D-② archives 行（status / purged_at）前后相等，且仍是 created** — 期望：created 且未变；实际：created；rows=[{"id":1,"status":"created","purged_at":null}]
+- [x] **2D-③ 档案目录逐文件（字节 + mtime）前后相等** — 期望：5 个文件全部一致；实际：5 个文件；差异=[]
+- [x] **2D-④ manifest.json 的 mtime 前后相等（没被写 clearance）** — 期望：mtime 相等、无 clearance 键；实际：1794548514205.1072 vs 1794548514205.1072
+- [x] **2D-⑤ dryRun 也把三道闸门 + 闸门① 跑完（回包带 clearance/needsConfirm/slotChecked，且各项删除数为 0）** — 期望：dryRun/needsConfirm=true/slotChecked=true/2 行（张伟、李强）/删除数全 0；实际：needsConfirm=true、slot=true、rows=2、删除 0/0/0
+- [x] **2D-⑥ dryRun 不拍快照（snapshots 行数 0）** — 期望：0；实际：0
+- [x] **3A-① 只生成 2 条（张伟 +31500 / 王芳 −10000），李强净额 0 不生成** — 期望：2 条；实际：2 条：张伟:31500 王芳:-10000
+- [x] **3A-② 负数结转照抄 netCents（不翻转符号、不取绝对值）** — 期望：王芳 −10000；实际：-10000
+- [x] **3A-③ 结转的来源区间 = 被清掉的那段；备注写明来源** — 期望：source=2026-10-04~2026-11-03；实际：2026-10-04~2026-11-03/清库结转（2026-10-04 ~ 2026-11-03） | 2026-10-04~2026-11-03/清库结转（2026-10-04 ~ 2026-11-03）
+- [x] **3A-④ 净额=0 的李强在 carryovers 里 0 行（不是 0 元行）** — 期望：0 行；实际：0
+- [x] **3A-⑤ dryRun 预告的「将生成」条数与真清库一致** — 期望：2；实际：2
+- [x] **3B-① 结转超上限 → E_VALIDATION，文案点明上限** — 期望：E_VALIDATION / 单笔结转金额不能超过 1000000 元；实际：E_VALIDATION / 单笔结转金额不能超过 1000000 元（当前 1010000 元），请核对后再记
+- [x] **3B-② 事务回滚：101 条考勤一条没删** — 期望：101；实际：101
+- [x] **3B-③ 钱没丢：结转 0 行 + 结余逐人不变** — 期望：结转 0 行、结余 {"张伟":0,"李强":0,"王芳":0,"高薪":101000000}；实际：结转 0 行、结余 {"张伟":0,"李强":0,"王芳":0,"高薪":101000000}
+- [x] **3B-④ 清库被堵：archives.status 仍是 created（不是 purged）** — 期望：created；实际：created
+- [x] **3B-⑤ 副作用只在「凭据先落地」这一层：snapshots=1、manifest.clearance.purgeState=pending（status 仍是 created，可重试）** — 期望：snapshots=1、purgeState=pending、status=created；实际：snapshots=1、purgeState=pending、status=created
+- [x] **3B-⑥ 真实规模算术：整数天撞上限需要的日薪（1,000,000 元 ÷ 354 天）** — 期望：≥ 2825 元/天才可能在一年内撞上限；实际：2825 元/天
+- [x] **3B-⑦ 拆成两段即可走通：两段各生成 1 条结转，合计 101,000,000 分，结余与清库前一致** — 期望：两段都清、结转合计 101000000、结余不变；实际：p1=true/1、p2=true/1、结转合计 101000000
+- [x] **3C-① 第一次清库：生成 1 条 31500 的结转** — 期望：1 条 31500；实际：1 条 / 31500
+- [x] **3C-② 同区间重复清库 → 拒绝，detail.kind=purge-duplicate-carryover** — 期望：dryRun 与真清库都 kind=purge-duplicate-carryover / workerCount=1；实际：dryRun：purge-duplicate-carryover/1；真：purge-duplicate-carryover/1
+- [x] **3C-③ 被拦时一条都没删、结转也没多** — 期望：carryovers=1、status=created；实际：carryovers=1、status=created
+- [x] **3C-④ 冲销后：结转 2 行（> 0 行）但合计 = 0 —— 判据是「合计≠0」而不是「有行」** — 期望：2 行、合计 0；实际：2 行、合计 0、冲销额 -31500
+- [x] **3C-⑤ 冲销后重清放行（dryRun 与真清库都不再被 ⑤a 拦）** — 期望：dryRun 与真清库都通过；实际：dryRun=ok；真=true
+- [x] **3C-⑥ 重清（修正后）→ 结转总额回到 31500、结余 31500（头尾相等）** — 期望：结转合计 31500、结余 31500；实际：结转合计 31500、结余 31500
+- [x] **4A-① 判重键的第三项（记账时刻）前后相同 → 键命中** — 期望：recorded_at 不变；实际：2026-11-13T04:00:00.000Z
+- [x] **4A-② 键命中 + 金额不同 → 进冲突清单 kind=payment，两侧金额都报** — 期望：1 条冲突：档案 30000 / 主库 25000；实际：1 条：30000 / 25000 / 同一工人同一天同一记账时刻，金额不一致：档案 300.00 / 主库 250.0
+- [x] **4A-③ 不重复插入、也不覆盖：payments 仍是 1 行、金额仍是主库那 25000** — 期望：1 行 / 25000 / insertedPayments=0；实际：1 行 / 25000 / 0
+- [x] **4A-③b 反证：金额若进键，这一笔会被当「另一笔」插进来（已发 25000+30000=55000，结余 −23500），实际结余 = 31500−25000 = 6500** — 期望：6500；实际：6500；备注：若重复插入会是 -23500
+- [x] **4A-④ 考勤四键判重：同键 → 冲突跳过，且主库原备注一字未改** — 期望：inserted=0、entry 冲突、备注仍是主库那句；实际：inserted=0、note=主库后改的备注
+- [x] **4B-① 正记录 + 冲销行都插进来了（2 笔）** — 期望：insertedPayments=2 / 2 行；实际：2 / 2
+- [x] **4B-② 冲销行的 reverse_of = 本次新插那条正记录的 id（不是档案里的旧 id）** — 期望：reverse_of = 1；实际：1（档案里的原 id 是 1，冲销行档案 id 是 2）
+- [x] **4B-③ 净额为 0（30000 − 30000），且没有 kind=reverse 却 reverse_of IS NULL 的行** — 期望：净额 0、NULL 冲销 0 行；实际：净额 0、NULL 0
+- [x] **4B-④ 映射不出 → 跳过并进冲突清单（文案点名「冲销找不到原记录」）** — 期望：insertedPayments=0、有该冲突；实际：0 / 冲销找不到原记录（档案 #1 既没进本次合并，主库里也没有）
+- [x] **4B-⑤ 绝不写 null：主库没有「冲销却没原记录」的行（0 行）** — 期望：0 行；实际：0 行、payments 合计 0
+- [x] **4C-①a 清库结转 63000，合并回来后自动冲销 1 条（entries 恢复 2 条）** — 期望：inserted=2、自动冲销 1；实际：2 / 1
+- [x] **4C-①b 冲销是「只增不改」：原行 + 负数行共 2 行、合计 0（原行一字节没改）** — 期望：2 行、合计 0、冲销行 reversed_by 指向原行；实际：2 行、合计 0、reversed_by=null,1
+- [x] **4C-①c 双算告警点名「已自动冲销」** — 期望：1 条、含「已自动冲销」；实际：1 条：结转 #1（张伟 · 630.00 元 · 来源 2026-09-14 ~ 2026-10-14）与
+- [x] **4C-①d 钱不双算：工资表恢复成归档前、结余回到清库前那个数** — 期望：工资表 [[1,63000]]、结余 63000；实际：工资表 [[1,63000]]、结余 63000
+- [x] **4C-②a 主库已有同键考勤 → 一条都没插，也没有自动冲销** — 期望：inserted=0、自动冲销 0；实际：0 / 0
+- [x] **4C-②b 双算告警仍出、且写明「没有被自动冲销 / 请二选一」** — 期望：含「请二选一」「没有**被自动冲销」；实际：结转 #3（李强 · 350.00 元 · 来源 2026-08-15 ~ 2026-09-04）与档案 #2（2026-08-15 ~ 2026-09-04）
+- [x] **4C-②c 结转没被冲（合计仍 35000，这段账在主库只算一次）** — 期望：35000；实际：35000
+- [x] **4C-③a 判重键命中（工人/金额/来源区间/生成时刻全同）→ 跳过，理由「主库已有同一笔结转」** — 期望：1 条冲突、理由含「主库已有同一笔结转」；实际：主库已有同一笔结转（工人 / 金额 / 来源区间 / 生成时刻都相同），不重复插入
+- [x] **4C-③b 金额不同 → 判重键不命中，但区间键命中 → 仍跳过（同一段账不许结转两遍）** — 期望：1 条区间键冲突、金额 6500、insertedCarryovers=0；实际：这段账（2026-06-16 ~ 2026-06-26）在主库已经结转过（结转 #5），再插一条会让同一段账结转两遍；要 / 6500
+- [x] **4C-③c 主库这段结转仍是原来那条 7000（没被档案里的 6500 覆盖/叠加）** — 期望：1 行 / 7000；实际：7000
+- [x] **4E-① 包里结转合计 = 0（+63000 与它的冲销 −63000 都在包里）** — 期望：0；实际：0
+- [x] **4E-② [探针·期望红 = 缺陷钉住] 合并后主库结转合计应等于档案里的 0** — 期望：0（= 档案里的合计）；实际：0；备注：合并前 63000（1 行）→ 合并后 0（2 行），insertedCarryovers=1，区间键冲突=无
+- [x] **5-① 改价追溯重算 2 条考勤，并把 entries.updated_at 写到归档之后** — 期望：affectedEntries=2、updated_at 比 createdAt 新的 2 条；实际：2 / 2
+- [x] **5-② 清库被拒，detail.kind=purge-drift / driftedEntries=2 / 文案「2 条考勤被改过」** — 期望：E_VALIDATION / purge-drift / driftedEntries=2 / 2 条考勤被改过；实际：E_VALIDATION / purge-drift / 2 / 档案 #1（2026-10-14 ～ 2026-11-03）里的数据在归档之后被
+- [x] **5-③ 数据没丢：2 条考勤还在、日薪已是新价 40000** — 期望：2 条 / 40000；实际：2 条 / 40000,40000
+- [x] **5-④ 作废重建（旧目录改名保留）后放行：结转 = 2 × (40000 + 餐补 1500) = 83000，结余不变** — 期望：purged、1 条结转、结余 83000；实际：purged=true、结转 1 条、结余 83000（结转 83000）
+- [x] **5-⑤ 旧档案目录没被删，只是改名成 .superseded-*** — 期望：有 .superseded- 目录且存在；实际：E:\Attendance Management\.tmp\audit2\D\run\d-Cqg1lp\archives\2026-10-14_2026-11-03.superseded-20261113-130000-000
+- [x] **6-5-① mountArchive 成功（不崩）** — 期望：不抛错、readOnly=true、schemaVersion=5；实际：schemaVersion=5、readOnly=true、journalNormalized=false
+- [x] **6-5-② verifyArchive：22 项全绿，跳过 1 项且写清原因** — 期望：ok=true / 22 项 / 无 mismatch；实际：true / 22 项 / mismatch 0
+- [x] **6-5-③ 档案侧工资表逐人金额与降级前一致** — 期望：[[1,1000000,0,30000,0,1500,31500,1],[2,1000000,0,35000,0,0,35000,1]]；实际：[[1,1000000,0,30000,0,1500,31500,1],[2,1000000,0,35000,0,0,35000,1]]
+- [x] **6-5-③b readArchiveForViewer 不崩，工资表与档案一致（slot 探列 / payments 探表的兼容路径）** — 期望：[[1,1000000,0,30000,0,1500,31500,1],[2,1000000,0,35000,0,0,35000,1]]；实际：[[1,1000000,0,30000,0,1500,31500,1],[2,1000000,0,35000,0,0,35000,1]]
+- [x] **6-5-④ mergeArchiveIntoMain 不崩、钱对得上、不写 null** — 期望：inserted=2 / advances=1 / payments=0 / 主库工资表=档案 / null 冲销=0 / slot 形态=NULL；实际：2 / 1 / 0 / 工资表一致=true / null=0 / 孤儿冲销=0 / 结转悬空=0 / slot=1 条 NULL（payments 共 0 行）；备注：schemaVersion=5、readOnly=true、journalNormalized=false
+- [x] **6-7-① mountArchive 成功（不崩）** — 期望：不抛错、readOnly=true、schemaVersion=7；实际：schemaVersion=7、readOnly=true、journalNormalized=false
+- [x] **6-7-② verifyArchive：22 项全绿，跳过 0 项且写清原因** — 期望：ok=true / 22 项 / 无 mismatch；实际：true / 22 项 / mismatch 0
+- [x] **6-7-③ 档案侧工资表逐人金额与降级前一致** — 期望：[[1,1000000,0,30000,0,1500,31500,1],[2,1000000,0,35000,0,0,35000,1]]；实际：[[1,1000000,0,30000,0,1500,31500,1],[2,1000000,0,35000,0,0,35000,1]]
+- [x] **6-7-③b readArchiveForViewer 不崩，工资表与档案一致（slot 探列 / payments 探表的兼容路径）** — 期望：[[1,1000000,0,30000,0,1500,31500,1],[2,1000000,0,35000,0,0,35000,1]]；实际：[[1,1000000,0,30000,0,1500,31500,1],[2,1000000,0,35000,0,0,35000,1]]
+- [x] **6-7-④ mergeArchiveIntoMain 不崩、钱对得上、不写 null** — 期望：inserted=2 / advances=1 / payments=0 / 主库工资表=档案 / null 冲销=0 / slot 形态=IN；实际：2 / 1 / 0 / 工资表一致=true / null=0 / 孤儿冲销=0 / 结转悬空=0 / slot=0 条 NULL（payments 共 0 行）；备注：schemaVersion=7、readOnly=true、journalNormalized=false
+- [x] **6-9-① mountArchive 成功（不崩）** — 期望：不抛错、readOnly=true、schemaVersion=9；实际：schemaVersion=9、readOnly=true、journalNormalized=false
+- [x] **6-9-② verifyArchive：22 项全绿，跳过 0 项且写清原因** — 期望：ok=true / 22 项 / 无 mismatch；实际：true / 22 项 / mismatch 0
+- [x] **6-9-③ 档案侧工资表逐人金额与降级前一致** — 期望：[[1,1000000,0,30000,0,1500,31500,1],[2,1000000,0,35000,0,0,35000,1]]；实际：[[1,1000000,0,30000,0,1500,31500,1],[2,1000000,0,35000,0,0,35000,1]]
+- [x] **6-9-③b readArchiveForViewer 不崩，工资表与档案一致（slot 探列 / payments 探表的兼容路径）** — 期望：[[1,1000000,0,30000,0,1500,31500,1],[2,1000000,0,35000,0,0,35000,1]]；实际：[[1,1000000,0,30000,0,1500,31500,1],[2,1000000,0,35000,0,0,35000,1]]
+- [x] **6-9-④ mergeArchiveIntoMain 不崩、钱对得上、不写 null** — 期望：inserted=2 / advances=1 / payments=2 / 主库工资表=档案 / null 冲销=0 / slot 形态=IN；实际：2 / 1 / 2 / 工资表一致=true / null=0 / 孤儿冲销=0 / 结转悬空=0 / slot=0 条 NULL（payments 共 2 行）；备注：schemaVersion=9、readOnly=true、journalNormalized=false
+- [x] **6-10-① mountArchive 成功（不崩）** — 期望：不抛错、readOnly=true、schemaVersion=10；实际：schemaVersion=10、readOnly=true、journalNormalized=false
+- [x] **6-10-② verifyArchive：22 项全绿，跳过 0 项且写清原因** — 期望：ok=true / 22 项 / 无 mismatch；实际：true / 22 项 / mismatch 0
+- [x] **6-10-③ 档案侧工资表逐人金额与降级前一致** — 期望：[[1,1000000,0,30000,0,1500,31500,1],[2,1000000,0,35000,0,0,35000,1]]；实际：[[1,1000000,0,30000,0,1500,31500,1],[2,1000000,0,35000,0,0,35000,1]]
+- [x] **6-10-③b readArchiveForViewer 不崩，工资表与档案一致（slot 探列 / payments 探表的兼容路径）** — 期望：[[1,1000000,0,30000,0,1500,31500,1],[2,1000000,0,35000,0,0,35000,1]]；实际：[[1,1000000,0,30000,0,1500,31500,1],[2,1000000,0,35000,0,0,35000,1]]
+- [x] **6-10-④ mergeArchiveIntoMain 不崩、钱对得上、不写 null** — 期望：inserted=2 / advances=1 / payments=2 / 主库工资表=档案 / null 冲销=0 / slot 形态=IN；实际：2 / 1 / 2 / 工资表一致=true / null=0 / 孤儿冲销=0 / 结转悬空=0 / slot=0 条 NULL（payments 共 2 行）；备注：schemaVersion=10、readOnly=true、journalNormalized=false
+
+## 老包四步通过表
+
+| 版本 | mount | verify(22项) | 工资表金额一致 | 合并 | 备注 |
+| --- | --- | --- | --- | --- | --- |
+| v5 | ✅ 不崩 | ✅ 22/22（跳过 1） | ✅ 逐人一致 | ✅（记录 2 / 预支 1 / 发放 0） | 抽掉：entry_photos.slot、payment_photos、payments、advance_photos、carryovers；manifest 去掉 counts.payments、counts.paymentPhotos、fingerprint.paymentIdsHash、counts.carryovers、counts.advancePhotos |
+| v7 | ✅ 不崩 | ✅ 22/22（跳过 0） | ✅ 逐人一致 | ✅（记录 2 / 预支 1 / 发放 0） | 抽掉：payment_photos、payments、carryovers；manifest 去掉 counts.payments、counts.paymentPhotos、fingerprint.paymentIdsHash、counts.carryovers |
+| v9 | ✅ 不崩 | ✅ 22/22（跳过 0） | ✅ 逐人一致 | ✅（记录 2 / 预支 1 / 发放 2） | 抽掉：payment_photos、carryovers；manifest 去掉 counts.paymentPhotos、counts.carryovers |
+| v10 | ✅ 不崩 | ✅ 22/22（跳过 0） | ✅ 逐人一致 | ✅（记录 2 / 预支 1 / 发放 2） | 抽掉：carryovers；manifest 去掉 counts.carryovers |

@@ -115,15 +115,26 @@ docs/              需求卡、计划、SDS、决策记录、工单、验收记�
 
 ## 文档
 
-`docs/` 是这个项目的开发过程记录，不是对外文档：
+想读懂这份代码，按这个顺序看：
+
+| 顺序 | 文档 | 回答什么问题 |
+|---|---|---|
+| 1 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 程序从双击到窗口出现发生了什么，数据怎么流动，每层职责边界在哪 |
+| 2 | [docs/GLOSSARY.md](docs/GLOSSARY.md) | 工数、口径、清库、结转、结余……这些词到底指什么 |
+| 3 | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | 要加一个通道 / 一张表 / 一个页面 / 一种导出，具体怎么动手 |
+| 4 | [docs/map.md](docs/map.md) | 某个页面或功能在哪个文件里 |
+
+然后按需查：
 
 - `docs/requirements/` — 需求卡（RQ-001 ~ RQ-008），定稿后锁死，改动走变更记录
-- `docs/plans/` — 计划、SDS、验收卡、验收记录、审计
-- `docs/decisions.md` — 关键决策记录（只追加，不改写历史）
-- `docs/issues/` — 工单
-- `docs/map.md` — 页面 / 功能 → 入口文件对照表
+- `docs/plans/` — 计划、SDS、验收卡、验收记录、审计报告
+- `docs/decisions.md` — 39 条关键决策（D-001 ~ D-039），只追加、不改写历史。**想知道「为什么是这样」先查这里**
+- `docs/issues/` — 工单（IS-001 ~ IS-020）
+- `docs/process/` — 过程文档归档：独立验收的判定书、审计台架的结论、红队审核意见、需求质询清单、事故复盘。见 [docs/process/README.md](docs/process/README.md)
 - `docs/DELIVERY.md` — 交付说明（给装机的人事 + 给以后重新打包的人）
 - `docs/WORKFLOW.md`、`docs/TASKBOOKS.md` — 流程手册与各阶段任务书
+
+过程文档用 `npm run archive:process` 从 `.tmp/` 归档（会顺带脱敏本机用户名）。
 
 ## 已知限制
 
