@@ -26,6 +26,8 @@ archives/
 .tmp/
 .cache/
 .vite/
+.vitest/
+coverage/
 *.tsbuildinfo
 
 # 编辑器与系统
